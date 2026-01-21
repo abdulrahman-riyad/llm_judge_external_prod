@@ -372,6 +372,9 @@ class ConnectorDataAccess(DataAccessInterface):
         This uses parameterized queries to safely handle special characters
         in LLM responses.
         
+        NOTE: PARSE_JSON() cannot be used in VALUES clause with parameterized queries.
+        We skip TOKENS_BREAKDOWN in the insert and can add it later via UPDATE if needed.
+        
         Args:
             table: Target raw data table
             conversation_id: Conversation ID
@@ -379,44 +382,26 @@ class ConnectorDataAccess(DataAccessInterface):
             department: Department name
             llm_response: The LLM response text (may contain special chars)
             prompt_type: The prompt type (e.g., 'client_suspecting_ai', 'ftr')
-            tokens_breakdown: Optional token usage dict
+            tokens_breakdown: Optional token usage dict (stored separately, not in this insert)
         
         Returns:
             True if successful
         """
         try:
-            # Try with TOKENS_BREAKDOWN as JSON
-            if tokens_breakdown:
-                insert_sql = f"""
-                INSERT INTO {table} 
-                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, PROMPT_TYPE, PROCESSING_STATUS, TOKENS_BREAKDOWN)
-                VALUES (%s, %s, %s, %s, %s, 'COMPLETED', PARSE_JSON(%s))
-                """
-                tokens_json = json.dumps(tokens_breakdown)
-                params = (conversation_id, date, department, llm_response, prompt_type, tokens_json)
-            else:
-                insert_sql = f"""
-                INSERT INTO {table} 
-                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, PROMPT_TYPE, PROCESSING_STATUS)
-                VALUES (%s, %s, %s, %s, %s, 'COMPLETED')
-                """
-                params = (conversation_id, date, department, llm_response, prompt_type)
+            # Simple insert without TOKENS_BREAKDOWN 
+            # (PARSE_JSON cannot be used in VALUES with parameterized queries)
+            insert_sql = f"""
+            INSERT INTO {table} 
+            (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, PROMPT_TYPE, PROCESSING_STATUS)
+            VALUES (%s, %s, %s, %s, %s, 'COMPLETED')
+            """
+            params = (conversation_id, date, department, llm_response, prompt_type)
             
             return self.execute_sql_parameterized(insert_sql, params)
             
         except Exception as e:
-            # Fallback: Try without TOKENS_BREAKDOWN
-            try:
-                insert_sql = f"""
-                INSERT INTO {table} 
-                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, PROMPT_TYPE, PROCESSING_STATUS)
-                VALUES (%s, %s, %s, %s, %s, 'COMPLETED')
-                """
-                params = (conversation_id, date, department, llm_response, prompt_type)
-                return self.execute_sql_parameterized(insert_sql, params)
-            except Exception as e2:
-                print(f"Error inserting LLM result: {e2}")
-                return False
+            print(f"Error inserting LLM result: {e}")
+            return False
     
     def insert_tool_eval_result(
         self,
