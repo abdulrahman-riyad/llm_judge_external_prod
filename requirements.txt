@@ -1,0 +1,94 @@
+# =============================================================================
+# LLM_JUDGE Pipeline - Dependencies
+# =============================================================================
+# 
+# Install with: pip install -r requirements.txt
+#
+# For different environments:
+# - GitHub Actions: Full install (all packages)
+# - Google Colab: pip install -r requirements.txt (some pre-installed)
+# - Snowflake: Most packages available, may need subset
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# CORE DEPENDENCIES
+# -----------------------------------------------------------------------------
+
+# Data manipulation
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP/API clients
+aiohttp>=3.9.0        # Async HTTP for parallel LLM calls
+requests>=2.31.0      # Sync HTTP for simple requests
+
+# Async support
+nest-asyncio>=1.5.8   # Required for running async in notebooks/Colab
+
+# -----------------------------------------------------------------------------
+# SNOWFLAKE CONNECTIVITY
+# -----------------------------------------------------------------------------
+
+# Snowflake connector (for external execution)
+snowflake-connector-python>=3.6.0
+
+# Optional: Snowpark (only needed inside Snowflake, skip in external envs)
+# snowflake-snowpark-python>=1.11.0
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# YAML config support
+pyyaml>=6.0.1
+
+# Environment variable handling
+python-dotenv>=1.0.0
+
+# -----------------------------------------------------------------------------
+# DATA PROCESSING
+# -----------------------------------------------------------------------------
+
+# JSON handling (included in stdlib, but ensure compatibility)
+# json is stdlib
+
+# XML parsing for conversation conversion
+lxml>=5.1.0
+
+# Arrow format for efficient data transfer
+pyarrow>=14.0.0
+
+# -----------------------------------------------------------------------------
+# DEVELOPMENT & TESTING
+# -----------------------------------------------------------------------------
+
+# Testing (uncomment for local development)
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+
+# Code quality (optional)
+# ruff>=0.1.0
+# black>=24.0.0
+# mypy>=1.8.0
+
+# -----------------------------------------------------------------------------
+# OPTIONAL PACKAGES
+# -----------------------------------------------------------------------------
+
+# For OpenAI SDK (alternative to direct HTTP)
+# openai>=1.10.0
+
+# For retry logic
+# tenacity>=8.2.0
+
+# For progress bars
+# tqdm>=4.66.0
+
+# -----------------------------------------------------------------------------
+# VERSION CONSTRAINTS
+# -----------------------------------------------------------------------------
+
+# Python version
+# Requires Python 3.9+
+# Tested with Python 3.11

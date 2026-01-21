@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test/Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.tox/
+
+# Logs
+*.log
+logs/
+
+# Temp files
+Untitled
+*.tmp
+
+# Data files
+*.csv
+*.xlsx
+
+# Config with secrets (never commit!)
+config.py
+secrets.py
+
+# OS files
+.DS_Store
+Thumbs.db
