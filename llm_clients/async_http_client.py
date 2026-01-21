@@ -140,6 +140,23 @@ class AsyncHTTPClient(LLMClientInterface):
             )
         )
     
+    # Alias for compatibility with run_pipeline.py
+    def process_all(
+        self,
+        items: List[Dict[str, str]],
+        system_prompt: str,
+        model: str = 'gpt-4o-mini',
+        temperature: float = 0.0,
+        max_tokens: int = 2048,
+        verbose: bool = True,
+        department: str = None
+    ) -> List[LLMResponse]:
+        """Alias for call_batch - used by run_pipeline.py."""
+        return self.call_batch(
+            items, system_prompt, model, temperature,
+            max_tokens, verbose, department
+        )
+    
     # =========================================================================
     # ASYNC IMPLEMENTATION
     # =========================================================================
