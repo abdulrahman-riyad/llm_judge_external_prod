@@ -1069,6 +1069,23 @@ Examples:
     )
     
     # Exit with appropriate code
-    if any(not r.get('success', True) for r in results.values()):
+    # Handle dry_run mode which returns {'dry_run': True, 'status': 'validated'}
+    if results.get('dry_run'):
+        print("\n✅ Dry run completed successfully")
+        sys.exit(0)
+    
+    # Handle error case
+    if results.get('error'):
+        print(f"\n❌ Pipeline failed: {results.get('error')}")
+        sys.exit(1)
+    
+    # Check department results - each value should be a dict with 'success' key
+    has_failure = False
+    for dept, result in results.items():
+        if isinstance(result, dict) and not result.get('success', True):
+            has_failure = True
+            break
+    
+    if has_failure:
         sys.exit(1)
     sys.exit(0)
