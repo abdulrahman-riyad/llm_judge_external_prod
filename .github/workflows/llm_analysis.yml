@@ -12,6 +12,16 @@ on:
         required: false
         default: ''
         type: string
+      date:
+        description: 'Target date (YYYY-MM-DD format, or leave empty for yesterday)'
+        required: false
+        default: ''
+        type: string
+      prompts:
+        description: 'Specific prompts to run (space-separated, or leave empty for all)'
+        required: false
+        default: ''
+        type: string
       test_limit:
         description: 'Max conversations per prompt (0 = unlimited)'
         required: false
@@ -75,6 +85,8 @@ jobs:
         run: |
           echo "🚀 Starting LLM Analysis Pipeline"
           echo "Departments: ${{ github.event.inputs.departments || 'all' }}"
+          echo "Date: ${{ github.event.inputs.date || 'yesterday' }}"
+          echo "Prompts: ${{ github.event.inputs.prompts || 'all' }}"
           echo "Test limit: ${{ github.event.inputs.test_limit || '50' }}"
           echo "Dry run: ${{ github.event.inputs.dry_run || 'false' }}"
           
@@ -84,6 +96,16 @@ jobs:
           # Add departments if specified (not empty)
           if [ -n "${{ github.event.inputs.departments }}" ]; then
             CMD="$CMD --departments ${{ github.event.inputs.departments }}"
+          fi
+          
+          # Add date if specified
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            CMD="$CMD --date ${{ github.event.inputs.date }}"
+          fi
+          
+          # Add prompts if specified
+          if [ -n "${{ github.event.inputs.prompts }}" ]; then
+            CMD="$CMD --prompts ${{ github.event.inputs.prompts }}"
           fi
           
           # Add test limit
