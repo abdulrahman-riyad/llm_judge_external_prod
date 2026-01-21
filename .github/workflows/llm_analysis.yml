@@ -80,6 +80,9 @@ jobs:
           # OpenAI API key from repository secrets
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           
+          # N8N API key for tool_eval message-level processing
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+          
           # Execution environment marker
           GITHUB_ACTIONS: true
         run: |
