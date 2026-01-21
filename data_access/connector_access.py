@@ -363,6 +363,7 @@ class ConnectorDataAccess(DataAccessInterface):
         date: str,
         department: str,
         llm_response: str,
+        prompt_type: str = None,
         tokens_breakdown: Optional[Dict] = None
     ) -> bool:
         """
@@ -377,6 +378,7 @@ class ConnectorDataAccess(DataAccessInterface):
             date: Target date
             department: Department name
             llm_response: The LLM response text (may contain special chars)
+            prompt_type: The prompt type (e.g., 'client_suspecting_ai', 'ftr')
             tokens_breakdown: Optional token usage dict
         
         Returns:
@@ -387,18 +389,18 @@ class ConnectorDataAccess(DataAccessInterface):
             if tokens_breakdown:
                 insert_sql = f"""
                 INSERT INTO {table} 
-                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, TOKENS_BREAKDOWN)
-                VALUES (%s, %s, %s, %s, PARSE_JSON(%s))
+                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, PROMPT_TYPE, PROCESSING_STATUS, TOKENS_BREAKDOWN)
+                VALUES (%s, %s, %s, %s, %s, 'COMPLETED', PARSE_JSON(%s))
                 """
                 tokens_json = json.dumps(tokens_breakdown)
-                params = (conversation_id, date, department, llm_response, tokens_json)
+                params = (conversation_id, date, department, llm_response, prompt_type, tokens_json)
             else:
                 insert_sql = f"""
                 INSERT INTO {table} 
-                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE)
-                VALUES (%s, %s, %s, %s)
+                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, PROMPT_TYPE, PROCESSING_STATUS)
+                VALUES (%s, %s, %s, %s, %s, 'COMPLETED')
                 """
-                params = (conversation_id, date, department, llm_response)
+                params = (conversation_id, date, department, llm_response, prompt_type)
             
             return self.execute_sql_parameterized(insert_sql, params)
             
@@ -407,10 +409,10 @@ class ConnectorDataAccess(DataAccessInterface):
             try:
                 insert_sql = f"""
                 INSERT INTO {table} 
-                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE)
-                VALUES (%s, %s, %s, %s)
+                (CONVERSATION_ID, DATE, DEPARTMENT, LLM_RESPONSE, PROMPT_TYPE, PROCESSING_STATUS)
+                VALUES (%s, %s, %s, %s, %s, 'COMPLETED')
                 """
-                params = (conversation_id, date, department, llm_response)
+                params = (conversation_id, date, department, llm_response, prompt_type)
                 return self.execute_sql_parameterized(insert_sql, params)
             except Exception as e2:
                 print(f"Error inserting LLM result: {e2}")

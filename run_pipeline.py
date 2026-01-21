@@ -419,7 +419,7 @@ class LLMPipelineRunner:
         
         # Write results to Snowflake
         written, errors = self._write_results(
-            results, department, target_date, full_table_name
+            results, department, target_date, full_table_name, prompt_type
         )
         
         return {
@@ -434,7 +434,8 @@ class LLMPipelineRunner:
         results: List[Dict],
         department: str,
         target_date: str,
-        table_name: str
+        table_name: str,
+        prompt_type: str = None
     ) -> Tuple[int, int]:
         """Write LLM results to Snowflake."""
         import json
@@ -458,6 +459,7 @@ class LLMPipelineRunner:
                     date=target_date,
                     department=department,
                     llm_response=str(response),
+                    prompt_type=prompt_type,
                     tokens_breakdown={
                         'prompt_tokens': usage.get('prompt_tokens', 0),
                         'completion_tokens': usage.get('completion_tokens', 0),
