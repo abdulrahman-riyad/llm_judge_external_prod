@@ -413,8 +413,9 @@ class LLMPipelineRunner:
             verbose=True
         )
         
-        # Count successes
-        successful = sum(1 for r in results if r.get('success'))
+        # Count successes (handle both LLMResponse objects and dicts)
+        from llm_clients.interface import LLMResponse
+        successful = sum(1 for r in results if (r.success if isinstance(r, LLMResponse) else r.get('success')))
         print(f"      ✅ {successful}/{len(results)} successful")
         
         # Write results to Snowflake
@@ -646,8 +647,9 @@ class LLMPipelineRunner:
             verbose=True
         )
         
-        # Count successes
-        successful = sum(1 for r in results if r.get('success'))
+        # Count successes (handle both LLMResponse objects and dicts)
+        from llm_clients.interface import LLMResponse
+        successful = sum(1 for r in results if (r.success if isinstance(r, LLMResponse) else r.get('success')))
         print(f"      ✅ {successful}/{len(results)} LLM calls successful")
         
         # Step 5: Write results to TOOL_EVAL_RAW_DATA
@@ -667,7 +669,11 @@ class LLMPipelineRunner:
                 target_skill = segment_data.get('TARGET_SKILL', '')
                 customer_name = segment_data.get('CUSTOMER_NAME', '')
                 
-                llm_response = result.get('response', '') if result.get('success') else result.get('error', 'LLM call failed')
+                # Handle both LLMResponse objects and dicts
+                if isinstance(result, LLMResponse):
+                    llm_response = result.response or '' if result.success else (str(result.error) if result.error else 'LLM call failed')
+                else:
+                    llm_response = result.get('response', '') if result.get('success') else result.get('error', 'LLM call failed')
                 
                 success = self.data_access.insert_tool_eval_result(
                     table=full_table_name,
