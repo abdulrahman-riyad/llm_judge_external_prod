@@ -1,0 +1,113 @@
+name: LLM Analysis Pipeline
+
+# ============================================================
+# TRIGGERS - How to run this workflow
+# ============================================================
+on:
+  # 1. MANUAL TRIGGER - Run from GitHub UI
+  workflow_dispatch:
+    inputs:
+      departments:
+        description: 'Departments to process (space-separated, or leave empty for all)'
+        required: false
+        default: ''
+        type: string
+      test_limit:
+        description: 'Max conversations per prompt (0 = unlimited)'
+        required: false
+        default: '50'
+        type: string
+      dry_run:
+        description: 'Dry run mode (validate without processing)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+  # 2. SCHEDULED TRIGGER - Runs automatically
+  # Uncomment the schedule below when ready for production
+  # schedule:
+  #   - cron: '0 6 * * *'  # Daily at 6 AM UTC
+
+# ============================================================
+# JOBS
+# ============================================================
+jobs:
+  run-llm-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Step 4: Run the LLM Analysis Pipeline
+      - name: Run LLM Analysis
+        env:
+          # Snowflake credentials from repository secrets
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_WAREHOUSE: COMPUTE_WH
+          SNOWFLAKE_DATABASE: MAIDS_EVALS
+          SNOWFLAKE_SCHEMA: LLM_JUDGE
+          
+          # OpenAI API key from repository secrets
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          
+          # Execution environment marker
+          GITHUB_ACTIONS: true
+        run: |
+          echo "🚀 Starting LLM Analysis Pipeline"
+          echo "Departments: ${{ github.event.inputs.departments || 'all' }}"
+          echo "Test limit: ${{ github.event.inputs.test_limit || '50' }}"
+          echo "Dry run: ${{ github.event.inputs.dry_run || 'false' }}"
+          
+          # Build command with arguments
+          CMD="python run_pipeline.py"
+          
+          # Add departments if specified (not empty)
+          if [ -n "${{ github.event.inputs.departments }}" ]; then
+            CMD="$CMD --departments ${{ github.event.inputs.departments }}"
+          fi
+          
+          # Add test limit
+          LIMIT="${{ github.event.inputs.test_limit || '50' }}"
+          if [ "$LIMIT" != "0" ]; then
+            CMD="$CMD --test-limit $LIMIT"
+          fi
+          
+          # Add dry run flag
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            CMD="$CMD --dry-run"
+          fi
+          
+          echo "Running: $CMD"
+          eval $CMD
+
+      # Step 5: Upload logs as artifact (optional)
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-logs-${{ github.run_id }}
+          path: |
+            *.log
+            pipeline_output.txt
+          retention-days: 7
+          if-no-files-found: ignore

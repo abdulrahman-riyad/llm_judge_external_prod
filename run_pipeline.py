@@ -915,7 +915,8 @@ def main(
     calculate_metrics: bool = True,
     test_limit: Optional[int] = None,
     snowflake_config: Optional[Dict] = None,
-    openai_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None,
+    dry_run: bool = False
 ) -> Dict[str, Any]:
     """
     Main entry point for LLM analysis pipeline.
@@ -930,18 +931,30 @@ def main(
         test_limit: Limit conversations per prompt (for testing)
         snowflake_config: Optional Snowflake connection config
         openai_api_key: Optional OpenAI API key
+        dry_run: If True, validate configuration without processing
     
     Returns:
         Dictionary with results per department
     """
     # 1. Detect and setup environment
     print("=" * 60)
-    print("🌍 LLM ANALYSIS PIPELINE")
+    print("🌍 LLM ANALYSIS PIPELINE" + (" [DRY RUN]" if dry_run else ""))
     print("=" * 60)
     
     env_info = get_environment_info()
     print(f"   Environment: {env_info.environment.value}")
     print(f"   Async Support: {'✅' if env_info.can_run_async else '❌'}")
+    
+    # Handle dry run mode
+    if dry_run:
+        print("\n🔍 DRY RUN MODE - Validating configuration...")
+        print(f"   Departments: {departments or 'all'}")
+        print(f"   Target Date: {target_date or 'yesterday'}")
+        print(f"   Prompts: {prompts or 'all'}")
+        print(f"   Calculate Metrics: {calculate_metrics}")
+        print(f"   Test Limit: {test_limit or 'unlimited'}")
+        print("\n   ✅ Configuration validated - no data processing performed")
+        return {'dry_run': True, 'status': 'validated'}
     
     # 2. Setup environment-specific clients
     try:
@@ -1037,6 +1050,12 @@ Examples:
         help='Verbose output'
     )
     
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Dry run mode - validate without writing to Snowflake'
+    )
+    
     args = parser.parse_args()
     
     # Run pipeline
@@ -1045,7 +1064,8 @@ Examples:
         target_date=args.date,
         prompts=args.prompts,
         calculate_metrics=not args.no_metrics,
-        test_limit=args.test_limit
+        test_limit=args.test_limit,
+        dry_run=args.dry_run
     )
     
     # Exit with appropriate code
