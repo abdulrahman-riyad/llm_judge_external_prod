@@ -431,7 +431,7 @@ class LLMPipelineRunner:
     
     def _write_results(
         self,
-        results: List[Dict],
+        results: List,
         department: str,
         target_date: str,
         table_name: str,
@@ -439,18 +439,30 @@ class LLMPipelineRunner:
     ) -> Tuple[int, int]:
         """Write LLM results to Snowflake."""
         import json
+        from llm_clients.interface import LLMResponse
         
         written = 0
         errors = 0
         
         for result in results:
             try:
-                conv_id = result.get('conversation_id')
-                response = result.get('response', '')
-                usage = result.get('usage') or {}
+                # Handle both LLMResponse objects and dicts
+                if isinstance(result, LLMResponse):
+                    conv_id = result.conversation_id
+                    response = result.response or ''
+                    is_success = result.success
+                    error_msg = str(result.error) if result.error else 'LLM call failed'
+                    usage = result.usage  # This is a property that returns a dict
+                else:
+                    # Fallback for dict results
+                    conv_id = result.get('conversation_id')
+                    response = result.get('response', '')
+                    is_success = result.get('success', True)
+                    error_msg = result.get('error', 'LLM call failed')
+                    usage = result.get('usage') or {}
                 
-                if not result.get('success'):
-                    response = result.get('error', 'LLM call failed')
+                if not is_success:
+                    response = error_msg
                 
                 # Insert using parameterized query
                 success = self.data_access.insert_llm_result(
