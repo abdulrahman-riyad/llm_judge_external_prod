@@ -35,6 +35,72 @@ except ImportError:
     snowpark = None
     SnowparkSession = None
 
+# =============================================================================
+# EXTERNAL COMPATIBILITY SHIM
+# =============================================================================
+# When running externally (GitHub Actions, Colab), snowflake_llm_processor
+# cannot be imported because it requires snowflake.snowpark.
+# We provide compatible functions from data_access.external_compat instead.
+
+def _get_insert_raw_data_with_cleanup():
+    """
+    Get insert_raw_data_with_cleanup function from appropriate source.
+    Returns the external-compatible version when Snowpark is not available.
+    """
+    if SNOWPARK_AVAILABLE:
+        try:
+            insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
+            return insert_raw_data_with_cleanup
+        except ImportError:
+            pass
+    
+    # Fallback to external-compatible version
+    try:
+        from data_access.external_compat import insert_raw_data_with_cleanup
+        return insert_raw_data_with_cleanup
+    except ImportError:
+        # Return a stub that logs a warning
+        def stub(*args, **kwargs):
+            print("⚠️ insert_raw_data_with_cleanup not available")
+            return {'success': False, 'error': 'Function not available', 'rows_inserted': 0}
+        return stub
+
+def _get_clean_dataframe_for_snowflake():
+    """Get clean_dataframe_for_snowflake from appropriate source."""
+    if SNOWPARK_AVAILABLE:
+        try:
+            from snowflake_llm_processor import clean_dataframe_for_snowflake
+            return clean_dataframe_for_snowflake
+        except ImportError:
+            pass
+    
+    try:
+        from data_access.external_compat import clean_dataframe_for_snowflake
+        return clean_dataframe_for_snowflake
+    except ImportError:
+        # Return identity function as fallback
+        def identity(df):
+            return df
+        return identity
+
+def _get_process_department_phase1():
+    """Get process_department_phase1 from appropriate source."""
+    if SNOWPARK_AVAILABLE:
+        try:
+            process_department_phase1 = _get_process_department_phase1()
+            return process_department_phase1
+        except ImportError:
+            pass
+    
+    try:
+        from data_access.external_compat import process_department_phase1
+        return process_department_phase1
+    except ImportError:
+        def stub(*args, **kwargs):
+            print("⚠️ process_department_phase1 not available in external mode")
+            return None
+        return stub
+
 
 # =============================================================================
 # SESSION ADAPTER
@@ -443,7 +509,7 @@ def generate_mv_resolvers_wrong_tool_summary_report(session, department_name: st
         summary_df = pd.DataFrame(summary_rows)
 
         # Step 3: Insert into WRONG_TOOL_SUMMARY (per conversation)
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='WRONG_TOOL_SUMMARY',
@@ -881,7 +947,7 @@ def generate_mv_resolvers_missing_tool_summary_report(session, department_name: 
         summary_df = pd.DataFrame(summary_rows)
 
         # Step 3: Insert into MISSING_TOOL_SUMMARY (per conversation)
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='MISSING_TOOL_SUMMARY',
@@ -1292,7 +1358,7 @@ def generate_cc_delighters_wrong_tool_summary_report(session, department_name: s
         summary_df = pd.DataFrame(summary_rows)
 
         # Step 3: Insert into WRONG_TOOL_SUMMARY (per conversation)
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='WRONG_TOOL_SUMMARY',
@@ -1711,7 +1777,7 @@ def generate_tool_summary_report(session, department_name: str, target_date):
         summary_df = pd.DataFrame(summary_rows)
 
         # Insert into TOOL_SUMMARY table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='TOOL_SUMMARY',
@@ -1910,7 +1976,7 @@ def generate_at_filipina_tool_summary_report(session, department_name: str, targ
         summary_df = pd.DataFrame(summary_rows)
 
         # Insert into AT_FILIPINA_TOOL_SUMMARY table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='AT_FILIPINA_TOOL_SUMMARY',
@@ -3702,7 +3768,7 @@ def create_exceptions_summary_report(session, shorttype_chat_counts: dict, short
     print(f"   📊 Creating exceptions summary breakdown table...")
     
     try:
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         if not shorttype_chat_counts:
             print(f"   ⚠️  No exceptions found for summary table")
@@ -5852,7 +5918,7 @@ def calculate_threatening_percentage(session, department_name: str, target_date=
                 summary_df = pd.DataFrame(summary_rows)
                 
                 # Insert summary data into THREATENING_BREAKDOWN_SUMMARY table
-                from snowflake_llm_processor import insert_raw_data_with_cleanup
+                insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
                 
                 insert_success = insert_raw_data_with_cleanup(
                     session=session,
@@ -6197,7 +6263,7 @@ def calculate_threatening_case_identifier_percentage(session, department_name: s
                 summary_df = pd.DataFrame(threat_details)
                 
                 # Insert summary data into THREATENING_CASE_IDENTIFIER_BREAKDOWN_SUMMARY table
-                from snowflake_llm_processor import insert_raw_data_with_cleanup
+                insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
                 
                 insert_success = insert_raw_data_with_cleanup(
                     session=session,
@@ -6820,7 +6886,7 @@ def calculate_clarification_percentage(session, department_name: str, target_dat
         print(f"   ✅ IS_PARSED column updated successfully")
         
         # Insert summary data into CLARIFICATION_BREAKDOWN_SUMMARY table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         insert_success = insert_raw_data_with_cleanup(
             session=session,
@@ -7335,7 +7401,7 @@ def calculate_agent_intervention_metrics(session, department_name: str, target_d
         summary_df = pd.DataFrame(summary_rows)
         
         # Step 4: Insert summary data into AGENT_INTERVENTION_SUMMARY table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         insert_success = insert_raw_data_with_cleanup(
             session=session,
@@ -7884,7 +7950,7 @@ def create_doctors_categorizing_summary_report(session, department_name: str, ta
             return True
         
         # Import the insert function from processor module
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         # Insert summary data into doctors categorizing summary table
         dynamic_columns = list(summary_df.columns)
@@ -8021,7 +8087,7 @@ def create_policy_escalation_summary_report(session, results_df, department_name
             return True, {'total_conversations': total_conversations, 'escalations_found': 0}
         
         # Import the insert function from processor module
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         # Insert summary data into policy escalation summary table
         dynamic_columns = list(frequency_df.columns)
@@ -8158,7 +8224,7 @@ def create_unclear_policy_summary_report(session, results_df, department_name: s
                 'rows_inserted': 0
             }
 
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
 
         dynamic_columns = list(frequency_df.columns)
         insert_success = insert_raw_data_with_cleanup(
@@ -8275,7 +8341,7 @@ def create_system_prompt_token_summary_report(session, department_name: str, tar
             return 0.0
 
         # Insert into SYSTEM_PROMPT_TOKENS_RAW_DATA using existing helper
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         dynamic_columns = ['CONVERSATION_ID', 'SYSTEM_PROMPT_SNAPSHOT', 'TOKENIZER_MODEL', 'NUMBER_OF_TOKENS']
         insert_success = insert_raw_data_with_cleanup(
             session=session,
@@ -8546,7 +8612,7 @@ def create_loss_interest_summary_report(session, department_name: str, target_da
         summary_df = summary_df.sort_values(by=['RECRUITMENT_STAGE', 'MAIN_REASON']).reset_index(drop=True)
         
         # Step 6: Insert into LOSS_INTEREST_SUMMARY
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='LOSS_INTEREST_SUMMARY',
@@ -8784,7 +8850,7 @@ def create_loss_interest_summary_report_african_ethiopian(session, department_na
         summary_df = summary_df.sort_values(by=['STAGE', 'REASON_CATEGORY']).reset_index(drop=True)
         
         # Step 7: Insert into LOSS_INTEREST_SUMMARY
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='LOSS_INTEREST_SUMMARY',
@@ -9028,7 +9094,7 @@ def create_loss_interest_summary_report_7DMA(session, department_name: str, targ
         df_to_insert = summary_df_out[dynamic_columns].copy()
         
         # Insert into table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_raw_data_with_cleanup(
             session=session,
             table_name='LOSS_INTEREST_7DMA_SUMMARY',
@@ -9145,7 +9211,7 @@ def create_clinic_reasons_summary_report(session, department_name: str, target_d
         summary_df = summary_df.sort_values(by=['NUMBER_OF_CHATS', 'CATEGORY_NAME'], ascending=[False, True]).reset_index(drop=True)
 
         # Step 4: Insert into CLINIC_RECOMMENDATION_REASON_SUMMARY
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='CLINIC_RECOMMENDATION_REASON_SUMMARY',
@@ -9407,7 +9473,7 @@ def create_categorizing_summary_report(session, parsed_df, department_name: str,
         pct_all_chats_not_handled = (chats_not_handled / total_chats * 100) if total_chats > 0 else 0.0
 
         # Import the insert function from processor module
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         # Insert summary data into categorizing summary table
         dynamic_columns = list(summary_df.columns)
@@ -9820,7 +9886,7 @@ def create_cc_resolvers_missing_policy_breakdown_report(session, department_name
     """
     print("   📊 Creating CC Resolvers missing policy breakdown...")
     try:
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
 
         category_to_policy_name = {
             "Customer Service Payment, Billing, and Support Policies": "Payments and Maid Salary",
@@ -10063,7 +10129,7 @@ def create_cc_delighters_missing_policy_breakdown_report(session, department_nam
     """
     print("   📊 Creating CC Delighters missing policy breakdown...")
     try:
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
 
         query = f"""
         SELECT CONVERSATION_ID, LLM_RESPONSE
@@ -10758,7 +10824,7 @@ def create_shadowing_automation_summary_report(session, department_name: str, ta
         try:
             if raw_rows:
                 raw_df = pd.DataFrame(raw_rows)
-                from snowflake_llm_processor import insert_raw_data_with_cleanup
+                insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
                 raw_insert = insert_raw_data_with_cleanup(
                     session=session,
                     table_name='UNIQUE_ISSUES_RAW_DATA',
@@ -10824,7 +10890,7 @@ def create_shadowing_automation_summary_report(session, department_name: str, ta
             print(f"   ✅ SHADOWING_AUTOMATION_SUMMARY: existing titles updated, unique={len(unique_titles_set)}")
             return stats, True
         
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='UNIQUE_ISSUES_SUMMARY',
@@ -11117,7 +11183,7 @@ def generate_request_retraction_summary_report(session, department_name: str, ta
         print(f"   ✅ IS_PARSED column updated successfully")
         
         # Insert summary data into REQUEST_RETRACTION_SUMMARY table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         insert_success = insert_raw_data_with_cleanup(
             session=session,
@@ -11447,7 +11513,7 @@ def generate_replacement_request_retraction_breakdown_report(session, department
         update_is_parsed_column(session, conversation_parsing_status, 'REQUEST_RETRACTION_RAW_DATA', target_date, department_name)
 
         # Insert breakdown table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='REPLACEMENT_REQUEST_RETRACTION_BREAKDOWN',
@@ -11794,7 +11860,7 @@ def generate_cancellation_request_retraction_breakdown_report(session, departmen
         update_is_parsed_column(session, conversation_parsing_status, 'CANCELLATION_RETRACTION_RAW_DATA', target_date, department_name)
 
         # Insert breakdown table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='CANCELLATION_REQUEST_RETRACTION_BREAKDOWN',
@@ -12481,7 +12547,7 @@ def calculate_cc_delighters_missed_tool_percentage(session, department_name: str
         summary_df = pd.DataFrame(summary_rows)
         
         # STEP 3: Insert into CC_DELIGHTERS_MISSED_TOOL_SUMMARY (per conversation)
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='CC_DELIGHTERS_MISSED_TOOL_SUMMARY',
@@ -12909,7 +12975,7 @@ def create_cc_resolvers_unclear_policy_breakdown_report(session, department_name
         
         # Insert breakdown table
         if breakdown_rows:
-            from snowflake_llm_processor import insert_raw_data_with_cleanup
+            insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
             breakdown_df = pd.DataFrame(breakdown_rows)
             insert_success = insert_raw_data_with_cleanup(
                 session=session,
@@ -13118,7 +13184,7 @@ def create_cc_resolvers_transfer_intervention_analysis_report(session, parsed_da
     print(f"   📊 Creating CC Resolvers Transfer & Intervention Analysis table...")
     
     try:
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         # Build mappings
         category_subcategory_chats = {}  # {(category, subcategory): set of chat_ids}
@@ -13529,7 +13595,7 @@ def create_cc_delighters_transfer_intervention_analysis_report(session, parsed_d
     print(f"   📊 Creating CC Delighters Transfer & Intervention Analysis table...")
     
     try:
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         # Build mappings
         category_subcategory_chats = {}  # {(category, subcategory): set of chat_ids}
@@ -14075,7 +14141,7 @@ def create_cc_resolvers_unsatisfactory_policy_breakdown_report(session, departme
     print(f"   📊 Creating unsatisfactory policy breakdown table...")
     
     try:
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         # Category to Policy Name mapping (same as Task 13)
         category_to_policy_name = {
@@ -14497,7 +14563,7 @@ def create_cc_delighters_unsatisfactory_policy_breakdown_report(session, departm
     print(f"   📊 Creating CC Delighters unsatisfactory policy breakdown table...")
     
     try:
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         # CC Delighters categories (no mapping needed - categories are already simplified)
         # Removed PROMPT_TYPE filter - data may have various prompt_type values
@@ -14945,7 +15011,7 @@ def calculate_total_chats(session, department_name: str, target_date):
     print(f"📊 CALCULATING TOTAL CHATS...")
     try:
         # Phase 1: fetch department conversations
-        from snowflake_llm_processor import process_department_phase1
+        process_department_phase1 = _get_process_department_phase1()
         filtered_df, phase1_stats, success = process_department_phase1(
             session, department_name, target_date
         )
@@ -16295,7 +16361,7 @@ def calculate_document_request_failure_percentage(session, department_name: str,
         breakdown_rows_count = 0
         if breakdown_rows:
             try:
-                from snowflake_llm_processor import insert_raw_data_with_cleanup
+                insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
                 breakdown_df = pd.DataFrame(breakdown_rows)
                 breakdown_insert = insert_raw_data_with_cleanup(
                     session=session,
@@ -16527,7 +16593,7 @@ def calculate_document_request_failure_chat_percentage(session, department_name:
         breakdown_inserted = False
         breakdown_rows_inserted = 0
         try:
-            from snowflake_llm_processor import insert_raw_data_with_cleanup
+            insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
             breakdown_df = pd.DataFrame(breakdown_rows)
             breakdown_insert = insert_raw_data_with_cleanup(
                 session=session,
@@ -17797,7 +17863,7 @@ def generate_policy_transfer_summary_report(session, department_name: str, targe
         print(f"   ✅ IS_PARSED column updated successfully")
         
         # Insert summary data into POLICY_TRANSFER_BREAKDOWN_SUMMARY table
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         
         insert_success = insert_raw_data_with_cleanup(
             session=session,
@@ -17888,7 +17954,7 @@ def calculate_tool_eval_metrics(session, department_name: str, target_date):
                 TOOL_EVAL_SUMMARY_SUCCESS, TOOL_EVAL_ANALYSIS_SUMMARY)
     """
     from snowflake_llm_config import get_general_tool_name_and_info
-    from snowflake_llm_processor import insert_raw_data_with_cleanup, clean_dataframe_for_snowflake
+    insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup(), clean_dataframe_for_snowflake
     
     print(f"📊 Calculating tool evaluation metrics for {department_name}...")
     
@@ -19131,7 +19197,7 @@ def calculate_tool_eval_metrics(session, department_name: str, target_date):
                 TOOL_EVAL_SUMMARY_SUCCESS, TOOL_EVAL_ANALYSIS_SUMMARY)
     """
     from snowflake_llm_config import get_general_tool_name_and_info
-    from snowflake_llm_processor import insert_raw_data_with_cleanup, clean_dataframe_for_snowflake
+    insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup(), clean_dataframe_for_snowflake
     
     print(f"📊 Calculating tool evaluation metrics for {department_name}...")
     
@@ -21017,7 +21083,7 @@ def create_gulf_maids_loss_interest_summary_report(session, department_name: str
         summary_df = pd.DataFrame(summary_rows)
         
         # Step 4: Insert into GULF_MAIDS_LOSS_INTEREST_SUMMARY
-        from snowflake_llm_processor import insert_raw_data_with_cleanup
+        insert_raw_data_with_cleanup = _get_insert_raw_data_with_cleanup()
         insert_success = insert_raw_data_with_cleanup(
             session=session,
             table_name='GULF_MAIDS_LOSS_INTEREST_SUMMARY',

@@ -142,6 +142,14 @@ class LLMPipelineRunner:
         )
         print("   ✅ Data access initialized")
         
+        # Set global connection for external compat module (used by metrics calc)
+        try:
+            from data_access.external_compat import set_global_connection
+            if hasattr(self.data_access, '_connection'):
+                set_global_connection(self.data_access._connection)
+        except ImportError:
+            pass  # External compat not available
+        
         # Initialize LLM client
         self.llm_client = self.llm_client_class(
             api_key=openai_api_key,
