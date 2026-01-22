@@ -7,8 +7,9 @@ name: Daily LLM Analysis Pipeline
 # Can also be triggered manually or via repository_dispatch
 
 on:
-  schedule:
-    - cron: '0 6 * * *'  # Daily at 6:00 AM UTC
+  # DISABLED: Uncomment when ready for production
+  # schedule:
+  #   - cron: '0 6 * * *'  # Daily at 6:00 AM UTC
   
   workflow_dispatch:
     inputs:
