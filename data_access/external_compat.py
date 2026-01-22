@@ -85,7 +85,16 @@ def _insert_with_connector(
     from snowflake.connector.pandas_tools import write_pandas
     
     try:
-        cursor = conn.cursor()
+        # Handle both raw connection and DataAccessInterface wrappers
+        # If conn has _connection attribute, it's a wrapper (like ConnectorDataAccess)
+        if hasattr(conn, '_connection'):
+            actual_conn = conn._connection
+        elif hasattr(conn, 'connection'):
+            actual_conn = conn.connection
+        else:
+            actual_conn = conn
+        
+        cursor = actual_conn.cursor()
         
         # Step 1: Check if table exists
         try:
@@ -127,7 +136,7 @@ def _insert_with_connector(
         delete_where_clause = " AND ".join(delete_conditions)
         delete_query = f"DELETE FROM {table_name} WHERE {delete_where_clause}"
         cursor.execute(delete_query)
-        conn.commit()
+        actual_conn.commit()
         
         # Step 5: Prepare dataframe
         dataframe_copy = dataframe.copy()
@@ -157,7 +166,7 @@ def _insert_with_connector(
             tbl = table_name
         
         success, nchunks, nrows, _ = write_pandas(
-            conn=conn,
+            conn=actual_conn,
             df=dataframe_copy,
             table_name=tbl,
             database=db,
@@ -215,7 +224,10 @@ def process_department_phase1(*args, **kwargs):
     Stub for process_department_phase1.
     
     This function is used for total_chats calculation but requires
-    full Snowpark functionality. In external mode, we skip this.
+    full Snowpark functionality. In external mode, we return empty results.
+    
+    Returns a tuple that can be unpacked: (filtered_df, phase1_stats, success)
     """
     print("⚠️ process_department_phase1 not available in external mode")
-    return None
+    # Return empty DataFrame, empty stats dict, and False to indicate no data
+    return pd.DataFrame(), {}, False
