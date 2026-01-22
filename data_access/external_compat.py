@@ -89,12 +89,31 @@ def _insert_with_connector(
         # If conn has _connection attribute, it's a wrapper (like ConnectorDataAccess)
         if hasattr(conn, '_connection'):
             actual_conn = conn._connection
+            # Get default database/schema from wrapper config
+            default_db = getattr(conn.config, 'database', None) if hasattr(conn, 'config') else None
+            default_schema = getattr(conn.config, 'schema', None) if hasattr(conn, 'config') else None
         elif hasattr(conn, 'connection'):
             actual_conn = conn.connection
+            default_db = None
+            default_schema = None
         else:
             actual_conn = conn
+            default_db = None
+            default_schema = None
         
         cursor = actual_conn.cursor()
+        
+        # CRITICAL: Set database and schema context for the session
+        # This fixes "Cannot perform CREATE TABLE. This session does not have a current database"
+        # Use defaults from config or hardcoded fallbacks
+        db_to_use = default_db or 'LLM_EVAL'
+        schema_to_use = default_schema or 'PUBLIC'
+        
+        try:
+            cursor.execute(f"USE DATABASE {db_to_use}")
+            cursor.execute(f"USE SCHEMA {schema_to_use}")
+        except Exception as ctx_err:
+            print(f"⚠️ Could not set database context: {ctx_err}")
         
         # Step 1: Check if table exists
         try:
@@ -153,16 +172,16 @@ def _insert_with_connector(
         dataframe_copy = dataframe_copy[available_cols]
         
         # Step 6: Write using write_pandas
-        # Parse table name
+        # Parse table name to get db/schema/table parts
         parts = table_name.split('.')
         if len(parts) == 3:
             db, schema, tbl = parts
         elif len(parts) == 2:
-            db = None
+            db = db_to_use  # Use default database
             schema, tbl = parts
         else:
-            db = None
-            schema = None
+            db = db_to_use  # Use default database
+            schema = schema_to_use  # Use default schema
             tbl = table_name
         
         success, nchunks, nrows, _ = write_pandas(
